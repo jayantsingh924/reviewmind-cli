@@ -15,10 +15,11 @@ def setup_command():
 
 @app.command(name="check")
 def check_command(
-    fix: bool = typer.Option(False, "--fix", help="Automatically apply AI suggestions")
+    fix: bool = typer.Option(False, "--fix", help="Automatically apply AI suggestions"),
+    rules: str = typer.Option(None, "--rules", help="Path to a local rules file (YAML or JSON)"),
 ):
     """Check staged files against active rules (used by pre-commit hook)."""
-    check.run_check(fix=fix)
+    check.run_check(fix=fix, rules_file=rules)
 
 
 if __name__ == "__main__":

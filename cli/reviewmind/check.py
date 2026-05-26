@@ -91,77 +91,121 @@ def apply_autofix(project_id, rule_id, file_path, line_number, token):
         return False
 
 
-def run_check(fix: bool = False):
-    token = get_token()
-    if not token:
-        typer.secho(
-            "Error: Not authenticated. Run 'reviewmind config add-authtoken <token>'",
-            fg=typer.colors.RED,
-        )
-        raise typer.Exit(1)
-
-    repo_name = get_git_repo_name()
-    if not repo_name:
-        typer.secho(
-            "Error: Could not detect repository origin URL. Ensure you have a git remote.",
-            fg=typer.colors.RED,
-        )
-        raise typer.Exit(1)
-
-    try:
-        flush_violations(token)
-    except Exception:
-        pass
-
-    headers = {"x-cli-token": token}
+def run_check(fix: bool = False, rules_file: str | None = None):
+    token = None
+    repo_name = None
     project_id = None
     rules_data = []
     is_offline = False
 
-    try:
-        resp = requests.get(
-            f"{API_BASE_URL}/projects/lookup", params={"repo": repo_name}, headers=headers
-        )
-        if resp.status_code == 404:
-            typer.secho(
-                f"Project '{repo_name}' not found in ReviewMind. Ensure you've registered it.",
-                fg=typer.colors.YELLOW,
-            )
-            raise typer.Exit(0)
-        resp.raise_for_status()
-        project = resp.json()
-        project_id = project["id"]
-
-        resp = requests.get(f"{API_BASE_URL}/projects/{project_id}/rules/active", headers=headers)
-        resp.raise_for_status()
-        rules_data = resp.json()
-
-        save_cached_data(repo_name, project_id, rules_data)
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+    if rules_file:
         is_offline = True
-        cached_data = get_cached_data(repo_name)
-        project_id = cached_data.get("project_id")
-        rules_data = cached_data.get("rules", [])
+        rules_path = Path(rules_file)
+        if not rules_path.exists():
+            typer.secho(f"Error: Rules file not found at {rules_file}", fg=typer.colors.RED)
+            raise typer.Exit(1)
 
-        if rules_data:
+        try:
+            with open(rules_path, "r", encoding="utf-8") as rf:
+                if rules_path.suffix in (".yml", ".yaml"):
+                    import yaml
+
+                    content = yaml.safe_load(rf)
+                elif rules_path.suffix == ".json":
+                    import json
+
+                    content = json.load(rf)
+                else:
+                    typer.secho(
+                        "Error: Rules file must be YAML (.yml/.yaml) or JSON (.json)",
+                        fg=typer.colors.RED,
+                    )
+                    raise typer.Exit(1)
+
+                if isinstance(content, dict) and "rules" in content:
+                    rules_data = content["rules"]
+                elif isinstance(content, list):
+                    rules_data = content
+                else:
+                    typer.secho(
+                        "Error: Invalid rules format. "
+                        "Must be a list of rules or have a 'rules' key.",
+                        fg=typer.colors.RED,
+                    )
+                    raise typer.Exit(1)
+        except Exception as e:
+            typer.secho(f"Error reading rules file: {e}", fg=typer.colors.RED)
+            raise typer.Exit(1)
+    else:
+        token = get_token()
+        if not token:
             typer.secho(
-                "\n[WARNING] ReviewMind backend offline. "
-                "Running check with locally cached rules...",
-                fg=typer.colors.YELLOW,
-                bold=True,
+                "Error: Not authenticated. Run 'reviewmind config add-authtoken <token>'",
+                fg=typer.colors.RED,
             )
-        else:
+            raise typer.Exit(1)
+
+        repo_name = get_git_repo_name()
+        if not repo_name:
             typer.secho(
-                "\n[WARNING] ReviewMind backend offline "
-                "and no local rules are cached for this project.",
-                fg=typer.colors.YELLOW,
+                "Error: Could not detect repository origin URL. Ensure you have a git remote.",
+                fg=typer.colors.RED,
             )
-            raise typer.Exit(0)
-    except typer.Exit:
-        raise
-    except Exception as e:
-        typer.secho(f"API Error fetching rules: {e}", fg=typer.colors.RED)
-        raise typer.Exit(1)
+            raise typer.Exit(1)
+
+        try:
+            flush_violations(token)
+        except Exception:
+            pass
+
+        headers = {"x-cli-token": token}
+
+        try:
+            resp = requests.get(
+                f"{API_BASE_URL}/projects/lookup", params={"repo": repo_name}, headers=headers
+            )
+            if resp.status_code == 404:
+                typer.secho(
+                    f"Project '{repo_name}' not found in ReviewMind. Ensure you've registered it.",
+                    fg=typer.colors.YELLOW,
+                )
+                raise typer.Exit(0)
+            resp.raise_for_status()
+            project = resp.json()
+            project_id = project["id"]
+
+            resp = requests.get(
+                f"{API_BASE_URL}/projects/{project_id}/rules/active", headers=headers
+            )
+            resp.raise_for_status()
+            rules_data = resp.json()
+
+            save_cached_data(repo_name, project_id, rules_data)
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            is_offline = True
+            cached_data = get_cached_data(repo_name)
+            project_id = cached_data.get("project_id")
+            rules_data = cached_data.get("rules", [])
+
+            if rules_data:
+                typer.secho(
+                    "\n[WARNING] ReviewMind backend offline. "
+                    "Running check with locally cached rules...",
+                    fg=typer.colors.YELLOW,
+                    bold=True,
+                )
+            else:
+                typer.secho(
+                    "\n[WARNING] ReviewMind backend offline "
+                    "and no local rules are cached for this project.",
+                    fg=typer.colors.YELLOW,
+                )
+                raise typer.Exit(0)
+        except typer.Exit:
+            raise
+        except Exception as e:
+            typer.secho(f"API Error fetching rules: {e}", fg=typer.colors.RED)
+            raise typer.Exit(1)
 
     if not rules_data:
         raise typer.Exit(0)
