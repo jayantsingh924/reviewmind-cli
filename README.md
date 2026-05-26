@@ -168,7 +168,7 @@ Contributions are welcome! This is the open source engine — feel free to:
 - Fix bugs and improve test coverage
 
 ```bash
-git clone https://github.com/reviewmind/reviewmind-cli
+git clone https://github.com/jayantsingh924/reviewmind-cli
 cd reviewmind-cli
 pip install -e ".[dev]"
 pytest
@@ -186,4 +186,4 @@ MIT — see [LICENSE](LICENSE)
 
 - 🌐 [ReviewMind SaaS Platform](https://reviewmind.ai) — Full dashboard, GitHub App, team management
 - 📖 [Documentation](https://docs.reviewmind.ai)
-- 🐛 [Issue Tracker](https://github.com/reviewmind/reviewmind-cli/issues)
+- 🐛 [Issue Tracker](https://github.com/jayantsingh924/reviewmind-cli/issues)
