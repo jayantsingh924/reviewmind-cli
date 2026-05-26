@@ -4,7 +4,7 @@ EngineRule — a plain dataclass representation of a Rule for the engine.
 Why this exists:
   The private backend uses SQLAlchemy ORM Rule models.
   The public engine must NOT depend on SQLAlchemy.
-  
+
   Anywhere the engine is called (CLI or backend), convert the
   rule object to EngineRule first.
 
@@ -17,6 +17,7 @@ Usage in CLI:
     Rules are fetched as JSON from the API and deserialized directly
     into EngineRule using EngineRule.from_dict(rule_json).
 """
+
 from dataclasses import dataclass
 
 
@@ -24,10 +25,10 @@ from dataclasses import dataclass
 class EngineRule:
     rule_code: str
     title: str
-    check_type: str              # "regex" | "ast"
+    check_type: str  # "regex" | "ast"
     check_pattern: str | None
-    check_language: str          # "python" | "javascript" | "typescript" | "any"
-    severity: str                # "error" | "warning" | "info"
+    check_language: str  # "python" | "javascript" | "typescript" | "any"
+    severity: str  # "error" | "warning" | "info"
     what_is_wrong: str
     what_is_correct: str
     supports_autofix: bool = False

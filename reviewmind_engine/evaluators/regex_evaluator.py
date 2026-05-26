@@ -1,6 +1,8 @@
 import re
+
 from reviewmind_engine.evaluators.base import RuleEvaluator
 from reviewmind_engine.finding import Finding
+
 
 class RegexRuleEvaluator(RuleEvaluator):
     def __init__(self, rule):
@@ -12,7 +14,9 @@ class RegexRuleEvaluator(RuleEvaluator):
             except Exception:
                 pass
 
-    def evaluate_file(self, filename: str, content: str, added_lines: set[int], context: dict | None = None) -> list[Finding]:
+    def evaluate_file(
+        self, filename: str, content: str, added_lines: set[int], context: dict | None = None
+    ) -> list[Finding]:
         if not self.pattern:
             return []
         findings = []
@@ -21,20 +25,26 @@ class RegexRuleEvaluator(RuleEvaluator):
             if i not in added_lines:
                 continue
             if self.pattern.search(line):
-                findings.append(Finding(
-                    rule_code=self.rule.rule_code,
-                    title=self.rule.title,
-                    message=f"Rule Violation: {self.rule.rule_code} - {self.rule.title}\n{self.rule.what_is_wrong}\nCorrect way: {self.rule.what_is_correct}",
-                    line=i,
-                    what_is_wrong=self.rule.what_is_wrong,
-                    what_is_correct=self.rule.what_is_correct,
-                    severity=self.rule.severity,
-                    file_path=filename,
-                    normalized_content=re.sub(r"\s+", " ", line).strip(),
-                    engine="regex",
-                    symbol=self.rule.check_pattern,
-                    category="style",
-                    remediation=self.rule.what_is_correct,
-                    confidence=self.rule.confidence
-                ))
+                findings.append(
+                    Finding(
+                        rule_code=self.rule.rule_code,
+                        title=self.rule.title,
+                        message=(
+                            f"Rule Violation: {self.rule.rule_code} - {self.rule.title}\n"
+                            f"{self.rule.what_is_wrong}\n"
+                            f"Correct way: {self.rule.what_is_correct}"
+                        ),
+                        line=i,
+                        what_is_wrong=self.rule.what_is_wrong,
+                        what_is_correct=self.rule.what_is_correct,
+                        severity=self.rule.severity,
+                        file_path=filename,
+                        normalized_content=re.sub(r"\s+", " ", line).strip(),
+                        engine="regex",
+                        symbol=self.rule.check_pattern,
+                        category="style",
+                        remediation=self.rule.what_is_correct,
+                        confidence=self.rule.confidence,
+                    )
+                )
         return findings

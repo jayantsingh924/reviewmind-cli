@@ -1,6 +1,6 @@
-from dataclasses import dataclass
 import hashlib
-import re
+from dataclasses import dataclass
+
 
 @dataclass
 class Finding:
@@ -14,7 +14,7 @@ class Finding:
     file_path: str
     normalized_content: str
     suggestion: str | None = None
-    
+
     # Advanced IR Fields
     engine: str = "regex"
     start_column: int | None = None

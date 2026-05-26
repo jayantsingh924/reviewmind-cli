@@ -1,13 +1,20 @@
 import os
 import re
-import sys
 import subprocess
+import sys
+from pathlib import Path
+
 import requests
 import typer
-from pathlib import Path
+
+from cli.reviewmind.cache import (
+    flush_violations,
+    get_cached_data,
+    queue_violation,
+    save_cached_data,
+)
 from cli.reviewmind.config import get_token
 from cli.reviewmind.setup import get_git_repo_name
-from cli.reviewmind.cache import get_cached_data, save_cached_data, queue_violation, flush_violations
 from reviewmind_engine import AnalysisEngine, EngineRule
 
 API_BASE_URL = os.getenv("REVIEWMIND_API_URL", "http://localhost:8080/api")
@@ -19,7 +26,7 @@ def get_staged_changes():
         staged_lines = {}
         current_file = None
         hunk_regex = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
-        
+
         for line in output.split("\n"):
             if line.startswith("+++ b/"):
                 current_file = line[6:].strip()
@@ -29,8 +36,8 @@ def get_staged_changes():
                 if match:
                     start = int(match.group(1))
                     count = int(match.group(2)) if match.group(2) else 1
-                    for l in range(start, start + count):
-                        staged_lines[current_file].add(l)
+                    for line_idx in range(start, start + count):
+                        staged_lines[current_file].add(line_idx)
         return staged_lines
     except Exception:
         return {}
@@ -40,14 +47,10 @@ def report_violation(project_id, rule_code, rule_id, commit_hash, file_path, lin
     if not project_id:
         queue_violation(None, rule_id, commit_hash, file_path, line_number)
         return
-        
+
     url = f"{API_BASE_URL}/rules/{rule_id}/violations"
     headers = {"x-cli-token": token}
-    payload = {
-        "commit_hash": commit_hash,
-        "file_path": file_path,
-        "line_number": line_number
-    }
+    payload = {"commit_hash": commit_hash, "file_path": file_path, "line_number": line_number}
     try:
         requests.post(url, json=payload, headers=headers)
     except Exception:
@@ -58,21 +61,18 @@ def apply_autofix(project_id, rule_id, file_path, line_number, token):
     if not project_id:
         typer.secho("Auto-Fix is not available in offline mode.", fg=typer.colors.YELLOW)
         return False
-        
+
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
     except Exception as e:
         typer.secho(f"Failed to read file: {e}", fg=typer.colors.RED)
         return False
-        
+
     url = f"{API_BASE_URL}/rules/{rule_id}/autofix"
     headers = {"x-cli-token": token}
-    payload = {
-        "file_content": content,
-        "line_number": line_number
-    }
-    
+    payload = {"file_content": content, "line_number": line_number}
+
     try:
         resp = requests.post(url, json=payload, headers=headers)
         resp.raise_for_status()
@@ -94,67 +94,87 @@ def apply_autofix(project_id, rule_id, file_path, line_number, token):
 def run_check(fix: bool = False):
     token = get_token()
     if not token:
-        typer.secho("Error: Not authenticated. Run 'reviewmind config add-authtoken <token>'", fg=typer.colors.RED)
+        typer.secho(
+            "Error: Not authenticated. Run 'reviewmind config add-authtoken <token>'",
+            fg=typer.colors.RED,
+        )
         raise typer.Exit(1)
-        
+
     repo_name = get_git_repo_name()
     if not repo_name:
-        typer.secho("Error: Could not detect repository origin URL. Ensure you have a git remote.", fg=typer.colors.RED)
+        typer.secho(
+            "Error: Could not detect repository origin URL. Ensure you have a git remote.",
+            fg=typer.colors.RED,
+        )
         raise typer.Exit(1)
-        
+
     try:
         flush_violations(token)
     except Exception:
         pass
-        
+
     headers = {"x-cli-token": token}
     project_id = None
     rules_data = []
     is_offline = False
-    
+
     try:
-        resp = requests.get(f"{API_BASE_URL}/projects/lookup", params={"repo": repo_name}, headers=headers)
+        resp = requests.get(
+            f"{API_BASE_URL}/projects/lookup", params={"repo": repo_name}, headers=headers
+        )
         if resp.status_code == 404:
-            typer.secho(f"Project '{repo_name}' not found in ReviewMind. Ensure you've registered it.", fg=typer.colors.YELLOW)
+            typer.secho(
+                f"Project '{repo_name}' not found in ReviewMind. Ensure you've registered it.",
+                fg=typer.colors.YELLOW,
+            )
             raise typer.Exit(0)
         resp.raise_for_status()
         project = resp.json()
         project_id = project["id"]
-        
+
         resp = requests.get(f"{API_BASE_URL}/projects/{project_id}/rules/active", headers=headers)
         resp.raise_for_status()
         rules_data = resp.json()
-        
+
         save_cached_data(repo_name, project_id, rules_data)
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
         is_offline = True
         cached_data = get_cached_data(repo_name)
         project_id = cached_data.get("project_id")
         rules_data = cached_data.get("rules", [])
-        
+
         if rules_data:
-            typer.secho("\n[WARNING] ReviewMind backend offline. Running check with locally cached rules...", fg=typer.colors.YELLOW, bold=True)
+            typer.secho(
+                "\n[WARNING] ReviewMind backend offline. "
+                "Running check with locally cached rules...",
+                fg=typer.colors.YELLOW,
+                bold=True,
+            )
         else:
-            typer.secho("\n[WARNING] ReviewMind backend offline and no local rules are cached for this project.", fg=typer.colors.YELLOW)
+            typer.secho(
+                "\n[WARNING] ReviewMind backend offline "
+                "and no local rules are cached for this project.",
+                fg=typer.colors.YELLOW,
+            )
             raise typer.Exit(0)
     except typer.Exit:
         raise
     except Exception as e:
         typer.secho(f"API Error fetching rules: {e}", fg=typer.colors.RED)
         raise typer.Exit(1)
-        
+
     if not rules_data:
         raise typer.Exit(0)
-        
+
     staged_changes = get_staged_changes()
     if not staged_changes:
         raise typer.Exit(0)
-        
+
     try:
         commit_hash = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("utf-8").strip()
     except Exception:
         commit_hash = "unknown"
-        
+
     engine_rules = []
     rule_id_map = {}
     for r in rules_data:
@@ -163,10 +183,12 @@ def run_check(fix: bool = False):
         rule_id_map[rule_obj.rule_code] = r.get("id")
 
     import pathspec
+
     ignore_spec = None
     if Path(".reviewmind.yml").exists():
         try:
             import yaml
+
             with open(".reviewmind.yml", "r", encoding="utf-8") as yf:
                 config_yml = yaml.safe_load(yf) or {}
                 ignore_patterns = config_yml.get("ignore", [])
@@ -181,7 +203,7 @@ def run_check(fix: bool = False):
             continue
         if not Path(file_path).exists():
             continue
-            
+
         if ignore_spec and ignore_spec.match_file(file_path):
             continue
 
@@ -190,12 +212,10 @@ def run_check(fix: bool = False):
                 content = f.read()
         except UnicodeDecodeError:
             continue
-            
-        files_to_scan.append({
-            "filename": file_path,
-            "content": content,
-            "added_lines": modified_lines
-        })
+
+        files_to_scan.append(
+            {"filename": file_path, "content": content, "added_lines": modified_lines}
+        )
 
     if not files_to_scan:
         raise typer.Exit(0)
@@ -211,33 +231,60 @@ def run_check(fix: bool = False):
         violations_found = True
         severity = finding.severity.lower()
         color = typer.colors.RED if severity == "error" else typer.colors.YELLOW
-        
+
         try:
-            typer.secho(f"\n[{severity.upper()}] Rule Violation in {finding.file_path}:{finding.line}", fg=color, bold=True)
+            typer.secho(
+                f"\n[{severity.upper()}] Rule Violation in {finding.file_path}:{finding.line}",
+                fg=color,
+                bold=True,
+            )
             typer.secho(f"Rule: {finding.title}")
             typer.secho(f"Found: {finding.normalized_content}")
             typer.secho(f"Fix: {finding.what_is_correct}\n")
         except UnicodeEncodeError:
-            sys.stdout.write(f"\n[{severity.upper()}] Rule Violation in {finding.file_path}:{finding.line}\n")
+            sys.stdout.write(
+                f"\n[{severity.upper()}] Rule Violation in {finding.file_path}:{finding.line}\n"
+            )
             sys.stdout.write(f"Rule: {finding.title}\n")
             sys.stdout.write(f"Found: {finding.normalized_content}\n")
             sys.stdout.write(f"Fix: {finding.what_is_correct}\n\n")
 
         db_rule_id = rule_id_map.get(finding.rule_code)
         if db_rule_id:
-            report_violation(project_id, finding.rule_code, db_rule_id, commit_hash, finding.file_path, finding.line, token)
+            report_violation(
+                project_id,
+                finding.rule_code,
+                db_rule_id,
+                commit_hash,
+                finding.file_path,
+                finding.line,
+                token,
+            )
 
-            if fix or (sys.stdin.isatty() and typer.confirm("Would you like ReviewMind to auto-fix this file?", default=False)):
+            if fix or (
+                sys.stdin.isatty()
+                and typer.confirm("Would you like ReviewMind to auto-fix this file?", default=False)
+            ):
                 typer.secho("Applying AI Auto-Fix...", fg=typer.colors.BLUE)
                 if apply_autofix(project_id, db_rule_id, finding.file_path, finding.line, token):
-                    typer.secho("AI Auto-Fix applied successfully! The file has been updated and restaged.", fg=typer.colors.GREEN)
+                    typer.secho(
+                        "AI Auto-Fix applied successfully! The file has been updated and restaged.",
+                        fg=typer.colors.GREEN,
+                    )
                     break
 
     if violations_found:
         if is_offline:
-            typer.secho("Commit blocked locally due to ReviewMind rule violations. Violations queued to sync next time online.", fg=typer.colors.RED, bold=True)
+            typer.secho(
+                "Commit blocked locally due to ReviewMind rule violations. "
+                "Violations queued to sync next time online.",
+                fg=typer.colors.RED,
+                bold=True,
+            )
         else:
-            typer.secho("Commit blocked due to ReviewMind rule violations.", fg=typer.colors.RED, bold=True)
+            typer.secho(
+                "Commit blocked due to ReviewMind rule violations.", fg=typer.colors.RED, bold=True
+            )
         raise typer.Exit(1)
-        
+
     raise typer.Exit(0)

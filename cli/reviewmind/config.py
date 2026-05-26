@@ -1,7 +1,7 @@
-import os
 import json
-import typer
 from pathlib import Path
+
+import typer
 
 app = typer.Typer()
 
@@ -29,12 +29,15 @@ def save_config(config_data):
 def add_authtoken(token: str = typer.Argument(..., help="Your rm_live_... CLI token")):
     """Save the authentication token."""
     if not token.startswith("rm_live_"):
-        typer.secho("Warning: token does not start with rm_live_. It may be invalid.", fg=typer.colors.YELLOW)
-    
+        typer.secho(
+            "Warning: token does not start with rm_live_. It may be invalid.",
+            fg=typer.colors.YELLOW,
+        )
+
     config_data = load_config()
     config_data["token"] = token
     save_config(config_data)
-    
+
     typer.secho(f"Token saved to {CONFIG_FILE}", fg=typer.colors.GREEN)
 
 

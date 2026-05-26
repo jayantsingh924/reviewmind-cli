@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Any
+
 from reviewmind_engine.finding import Finding
 
 
@@ -39,5 +40,5 @@ class RuleEvaluator(ABC):
 
         Returns:
             List of Finding objects. Empty list if no violations found.
-            """
+        """
         ...

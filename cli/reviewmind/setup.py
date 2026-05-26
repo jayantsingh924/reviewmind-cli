@@ -1,7 +1,9 @@
 import os
 import subprocess
-import typer
 from pathlib import Path
+
+import typer
+
 from cli.reviewmind.config import get_token
 
 HOOK_SCRIPT = """#!/usr/bin/env bash
@@ -21,7 +23,11 @@ exit 0
 
 def get_git_repo_name():
     try:
-        output = subprocess.check_output(["git", "config", "--get", "remote.origin.url"]).decode("utf-8").strip()
+        output = (
+            subprocess.check_output(["git", "config", "--get", "remote.origin.url"])
+            .decode("utf-8")
+            .strip()
+        )
         if output.endswith(".git"):
             output = output[:-4]
         if ":" in output and not output.startswith("http"):
@@ -38,29 +44,37 @@ def get_git_repo_name():
 def run_setup():
     token = get_token()
     if not token:
-        typer.secho("Error: Not authenticated. Please run 'reviewmind config add-authtoken <token>' first.", fg=typer.colors.RED)
+        typer.secho(
+            "Error: Not authenticated. Please run 'reviewmind config add-authtoken <token>' first.",
+            fg=typer.colors.RED,
+        )
         raise typer.Exit(1)
-        
+
     if not Path(".git").exists():
-        typer.secho("Error: Not a git repository. Run this command at the root of a git repo.", fg=typer.colors.RED)
+        typer.secho(
+            "Error: Not a git repository. Run this command at the root of a git repo.",
+            fg=typer.colors.RED,
+        )
         raise typer.Exit(1)
 
     repo_name = get_git_repo_name()
     if not repo_name:
-        typer.secho("Warning: Could not detect repository origin URL automatically.", fg=typer.colors.YELLOW)
+        typer.secho(
+            "Warning: Could not detect repository origin URL automatically.", fg=typer.colors.YELLOW
+        )
 
     hooks_dir = Path(".git/hooks")
     hooks_dir.mkdir(parents=True, exist_ok=True)
-    
+
     pre_commit_file = hooks_dir / "pre-commit"
-    
+
     with open(pre_commit_file, "w") as f:
         f.write(HOOK_SCRIPT)
-        
+
     # Make it executable (mac/linux)
-    if os.name != 'nt':
+    if os.name != "nt":
         os.chmod(pre_commit_file, 0o755)
-        
+
     typer.secho("Successfully installed ReviewMind pre-commit hook!", fg=typer.colors.GREEN)
     if repo_name:
         typer.secho(f"Repository detected as: {repo_name}", fg=typer.colors.BLUE)

@@ -1,7 +1,7 @@
-import pytest
 from unittest.mock import MagicMock
-from reviewmind_engine.finding import Finding
+
 from reviewmind_engine.analysis_engine import AnalysisEngine
+from reviewmind_engine.finding import Finding
 
 
 def make_rule(
@@ -38,6 +38,7 @@ def make_rule(
 # Finding dataclass
 # -------------------------------------------------------------------
 
+
 def test_finding_fields():
     f = Finding(
         rule_code="RM001",
@@ -66,20 +67,42 @@ def test_finding_fields():
 def test_finding_fingerprint_is_stable():
     """Fingerprint must not change when only line number changes."""
     f1 = Finding(
-        rule_code="RM001", title="T", message="M", line=5,
-        what_is_wrong="W", what_is_correct="C", severity="error",
-        file_path="src/a.py", normalized_content="  x = eval(data)  ",
-        suggestion=None, engine="regex",
-        start_column=None, end_column=None, symbol=None,
-        category=None, remediation=None, confidence=0.9,
+        rule_code="RM001",
+        title="T",
+        message="M",
+        line=5,
+        what_is_wrong="W",
+        what_is_correct="C",
+        severity="error",
+        file_path="src/a.py",
+        normalized_content="  x = eval(data)  ",
+        suggestion=None,
+        engine="regex",
+        start_column=None,
+        end_column=None,
+        symbol=None,
+        category=None,
+        remediation=None,
+        confidence=0.9,
     )
     f2 = Finding(
-        rule_code="RM001", title="T", message="M", line=99,
-        what_is_wrong="W", what_is_correct="C", severity="error",
-        file_path="src/a.py", normalized_content="  x = eval(data)  ",
-        suggestion=None, engine="regex",
-        start_column=None, end_column=None, symbol=None,
-        category=None, remediation=None, confidence=0.9,
+        rule_code="RM001",
+        title="T",
+        message="M",
+        line=99,
+        what_is_wrong="W",
+        what_is_correct="C",
+        severity="error",
+        file_path="src/a.py",
+        normalized_content="  x = eval(data)  ",
+        suggestion=None,
+        engine="regex",
+        start_column=None,
+        end_column=None,
+        symbol=None,
+        category=None,
+        remediation=None,
+        confidence=0.9,
     )
     assert f1.fingerprint == f2.fingerprint
 
@@ -88,8 +111,10 @@ def test_finding_fingerprint_is_stable():
 # Regex Evaluator
 # -------------------------------------------------------------------
 
+
 def test_regex_evaluator_detects_violation():
     from reviewmind_engine.evaluators.regex_evaluator import RegexRuleEvaluator
+
     rule = make_rule(check_type="regex", check_pattern=r"eval\(")
     ev = RegexRuleEvaluator(rule)
     findings = ev.evaluate_file(
@@ -104,6 +129,7 @@ def test_regex_evaluator_detects_violation():
 
 def test_regex_evaluator_skips_non_added_lines():
     from reviewmind_engine.evaluators.regex_evaluator import RegexRuleEvaluator
+
     rule = make_rule(check_type="regex", check_pattern=r"eval\(")
     ev = RegexRuleEvaluator(rule)
     findings = ev.evaluate_file(
@@ -116,6 +142,7 @@ def test_regex_evaluator_skips_non_added_lines():
 
 def test_regex_evaluator_no_match():
     from reviewmind_engine.evaluators.regex_evaluator import RegexRuleEvaluator
+
     rule = make_rule(check_type="regex", check_pattern=r"eval\(")
     ev = RegexRuleEvaluator(rule)
     findings = ev.evaluate_file(
@@ -130,9 +157,12 @@ def test_regex_evaluator_no_match():
 # Python AST Evaluator
 # -------------------------------------------------------------------
 
+
 def test_python_ast_evaluator_detects_eval():
-    from reviewmind_engine.evaluators.python_ast_evaluator import PythonASTRuleEvaluator
     import ast
+
+    from reviewmind_engine.evaluators.python_ast_evaluator import PythonASTRuleEvaluator
+
     rule = make_rule(
         check_type="ast",
         check_pattern="eval",
@@ -154,8 +184,10 @@ def test_python_ast_evaluator_detects_eval():
 
 
 def test_python_ast_evaluator_skips_non_added_lines():
-    from reviewmind_engine.evaluators.python_ast_evaluator import PythonASTRuleEvaluator
     import ast
+
+    from reviewmind_engine.evaluators.python_ast_evaluator import PythonASTRuleEvaluator
+
     rule = make_rule(check_type="ast", check_pattern="eval", supports_ast=True)
     ev = PythonASTRuleEvaluator(rule)
     content = "result = eval(data)\n"
@@ -172,6 +204,7 @@ def test_python_ast_evaluator_skips_non_added_lines():
 # -------------------------------------------------------------------
 # Analysis Engine — integration
 # -------------------------------------------------------------------
+
 
 def test_analysis_engine_shared_ast_parse():
     """Engine must parse Python AST only once even with multiple AST rules."""
