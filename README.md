@@ -40,11 +40,24 @@ pipx install reviewmind
 
 ### 1. Authenticate with your ReviewMind account
 
+**Option A — Browser login (recommended):**
+
 ```bash
-reviewmind config --token YOUR_CLI_TOKEN
+reviewmind login
+```
+
+Opens `https://reviewmind.ai/cli/auth` in your browser. Paste the token shown there into the prompt.
+
+**Option B — Direct token:**
+
+```bash
+reviewmind config add-authtoken YOUR_CLI_TOKEN
 ```
 
 Get your CLI token from **Profile → CLI Token** on the ReviewMind dashboard.
+
+> **Token format:** Tokens start with `rm_live_` (e.g. `rm_live_abcdef...`).
+> The token is stored in `~/.reviewmind/config.json`.
 
 ### 2. Set up pre-commit hook for your repo
 
@@ -61,6 +74,14 @@ before every `git commit`.
 ```bash
 reviewmind check
 ```
+
+### 4. Verify your setup
+
+```bash
+reviewmind doctor
+```
+
+Checks your token, backend connectivity, and config directory permissions.
 
 ---
 
@@ -154,8 +175,9 @@ ignore:
 
 | Variable | Default | Description |
 |---|---|---|
-| `REVIEWMIND_API_URL` | `https://api.reviewmind.ai` | Backend API URL |
-| `REVIEWMIND_TOKEN` | — | CLI auth token (or use `reviewmind config`) |
+| `REVIEWMIND_API_URL` | `http://localhost:8080/api` | Backend API URL |
+
+Auth token is stored in `~/.reviewmind/config.json` via `reviewmind login` or `reviewmind config add-authtoken`. The token is sent as the `x-cli-token` header in all API requests.
 
 ---
 
