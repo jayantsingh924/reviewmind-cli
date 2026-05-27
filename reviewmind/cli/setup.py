@@ -4,7 +4,7 @@ from pathlib import Path
 
 import typer
 
-from reviewmind.cli.config import get_token
+from reviewmind.cli.config import get_selected_repo, get_token
 
 HOOK_SCRIPT = """#!/usr/bin/env bash
 
@@ -58,10 +58,11 @@ def run_setup():
         )
         raise typer.Exit(1)
 
-    repo_name = get_git_repo_name()
+    repo_name = get_git_repo_name() or get_selected_repo()
     if not repo_name:
         typer.secho(
-            "Warning: Could not detect repository origin URL automatically.", fg=typer.colors.YELLOW
+            "Warning: Could not detect repository. Run 'reviewmind login' to select one.",
+            fg=typer.colors.YELLOW,
         )
 
     hooks_dir = Path(".git/hooks")
