@@ -90,41 +90,80 @@ def test_run_check_rules_file_not_found():
 
 
 @patch("reviewmind.cli.auth.webbrowser.open")
-@patch("reviewmind.cli.auth.typer.prompt", return_value="rm_live_abcdef")
-@patch("reviewmind.cli.auth.load_config", return_value={})
 @patch("reviewmind.cli.auth.save_config")
-def test_login_success(mock_save_config, mock_load_config, mock_prompt, mock_open):
+@patch("reviewmind.cli.auth.load_config", return_value={})
+@patch("reviewmind.cli.auth.typer.prompt", return_value="1")
+@patch("reviewmind.cli.auth.requests.get")
+@patch("reviewmind.cli.auth.requests.post")
+def test_login_success(mock_post, mock_get, mock_prompt, mock_load_config, mock_save_config, mock_open):
+    from unittest.mock import MagicMock
     from reviewmind.cli.auth import run_login
+
+    # First post: device code request
+    device_resp = MagicMock()
+    device_resp.json.return_value = {
+        "device_code": "test_device_code",
+        "user_code": "ABCD-1234",
+        "verification_uri": "https://github.com/login/device",
+        "expires_in": 900,
+        "interval": 1,
+    }
+    # Second post: token poll — approved immediately
+    token_resp = MagicMock()
+    token_resp.json.return_value = {"access_token": "gho_testtoken123"}
+    mock_post.side_effect = [device_resp, token_resp]
+
+    # First get: user info; second get: repo list
+    user_resp = MagicMock()
+    user_resp.json.return_value = {"login": "testuser"}
+    repos_resp = MagicMock()
+    repos_resp.json.return_value = [{"full_name": "testuser/my-repo"}]
+    mock_get.side_effect = [user_resp, repos_resp]
 
     run_login()
-    mock_open.assert_called_once_with("https://reviewmind.ai/cli/auth")
-    mock_save_config.assert_called_once_with({"token": "rm_live_abcdef"})
+
+    mock_open.assert_called_once_with("https://github.com/login/device")
+    saved = mock_save_config.call_args[0][0]
+    assert saved["token"] == "gho_testtoken123"
+    assert saved["github_username"] == "testuser"
+    assert saved["selected_repo"] == "testuser/my-repo"
 
 
-@patch("reviewmind.cli.auth.webbrowser.open")
-@patch("reviewmind.cli.auth.typer.prompt", return_value="invalid_token")
-@patch("reviewmind.cli.auth.load_config", return_value={})
-@patch("reviewmind.cli.auth.save_config")
-@patch("typer.secho")
-def test_login_invalid_token(
-    mock_secho, mock_save_config, mock_load_config, mock_prompt, mock_open
-):
+@patch("reviewmind.cli.auth.requests.post")
+def test_login_access_denied(mock_post):
+    from unittest.mock import MagicMock
     from reviewmind.cli.auth import run_login
 
-    run_login()
-    mock_save_config.assert_called_once_with({"token": "invalid_token"})
-    warnings = [call[0][0] for call in mock_secho.call_args_list if len(call[0]) > 0]
-    assert any("does not start with rm_live_" in w for w in warnings)
+    device_resp = MagicMock()
+    device_resp.json.return_value = {
+        "device_code": "test_device_code",
+        "user_code": "ABCD-1234",
+        "verification_uri": "https://github.com/login/device",
+        "expires_in": 900,
+        "interval": 1,
+    }
+    denied_resp = MagicMock()
+    denied_resp.json.return_value = {"error": "access_denied"}
+    mock_post.side_effect = [device_resp, denied_resp]
 
-
-@patch("reviewmind.cli.auth.webbrowser.open")
-@patch("reviewmind.cli.auth.typer.prompt", return_value="")
-def test_login_empty_token(mock_prompt, mock_open):
-    from reviewmind.cli.auth import run_login
-
-    with pytest.raises(typer.Exit) as exc_info:
-        run_login()
+    with patch("reviewmind.cli.auth.webbrowser.open"):
+        with pytest.raises(typer.Exit) as exc_info:
+            run_login()
     assert exc_info.value.exit_code == 1
+
+
+def test_login_no_client_id():
+    from reviewmind.cli.auth import _require_client_id
+    import reviewmind.cli.auth as auth_module
+
+    original = auth_module.GITHUB_CLIENT_ID
+    auth_module.GITHUB_CLIENT_ID = ""
+    try:
+        with pytest.raises(typer.Exit) as exc_info:
+            _require_client_id()
+        assert exc_info.value.exit_code == 1
+    finally:
+        auth_module.GITHUB_CLIENT_ID = original
 
 
 # --- Doctor tests ---

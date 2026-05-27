@@ -26,14 +26,8 @@ def save_config(config_data):
 
 
 @app.command()
-def add_authtoken(token: str = typer.Argument(..., help="Your rm_live_... CLI token")):
+def add_authtoken(token: str = typer.Argument(..., help="Your CLI token")):
     """Save the authentication token."""
-    if not token.startswith("rm_live_"):
-        typer.secho(
-            "Warning: token does not start with rm_live_. It may be invalid.",
-            fg=typer.colors.YELLOW,
-        )
-
     config_data = load_config()
     config_data["token"] = token
     save_config(config_data)
@@ -44,3 +38,8 @@ def add_authtoken(token: str = typer.Argument(..., help="Your rm_live_... CLI to
 def get_token():
     config_data = load_config()
     return config_data.get("token")
+
+
+def get_selected_repo():
+    config_data = load_config()
+    return config_data.get("selected_repo")

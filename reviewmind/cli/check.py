@@ -13,7 +13,7 @@ from reviewmind.cli.cache import (
     queue_violation,
     save_cached_data,
 )
-from reviewmind.cli.config import get_token
+from reviewmind.cli.config import get_selected_repo, get_token
 from reviewmind.cli.setup import get_git_repo_name
 from reviewmind.engine import AnalysisEngine, EngineRule
 
@@ -178,10 +178,11 @@ def run_check(
             )
             raise typer.Exit(1)
 
-        repo_name = get_git_repo_name()
+        repo_name = get_git_repo_name() or get_selected_repo()
         if not repo_name:
             typer.secho(
-                "Error: Could not detect repository origin URL. Ensure you have a git remote.",
+                "Error: Could not detect repository. Run 'reviewmind login' to select one, "
+                "or ensure your git remote is configured.",
                 fg=typer.colors.RED,
             )
             raise typer.Exit(1)

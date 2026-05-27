@@ -38,36 +38,25 @@ pipx install reviewmind
 
 ## Quick Start
 
-### 1. Authenticate with your ReviewMind account
-
-**Option A — Browser login (recommended):**
+### 1. Authenticate with GitHub
 
 ```bash
 reviewmind login
 ```
 
-Opens `https://reviewmind.ai/cli/auth` in your browser. Paste the token shown there into the prompt.
+This opens `https://github.com/login/device` in your browser and shows a short code in the terminal.
+Enter the code on GitHub, approve the app, and the CLI authenticates automatically — no tokens to copy or paste.
 
-**Option B — Direct token:**
+After approval you'll be prompted to pick which repository ReviewMind should enforce rules on.
 
-```bash
-reviewmind config add-authtoken YOUR_CLI_TOKEN
-```
-
-Get your CLI token from **Profile → CLI Token** on the ReviewMind dashboard.
-
-> **Token format:** Tokens start with `rm_live_` (e.g. `rm_live_abcdef...`).
-> The token is stored in `~/.reviewmind/config.json`.
-
-### 2. Set up pre-commit hook for your repo
+### 2. Set up the pre-commit hook
 
 ```bash
 cd your-project
 reviewmind setup
 ```
 
-This installs a pre-commit hook that automatically runs `reviewmind check`
-before every `git commit`.
+Installs a pre-commit hook that automatically runs `reviewmind check` before every `git commit`.
 
 ### 3. Run a manual scan
 
@@ -81,7 +70,7 @@ reviewmind check
 reviewmind doctor
 ```
 
-Checks your token, backend connectivity, and config directory permissions.
+Checks authentication, backend connectivity, and config directory permissions.
 
 ---
 
@@ -176,8 +165,10 @@ ignore:
 | Variable | Default | Description |
 |---|---|---|
 | `REVIEWMIND_API_URL` | `http://localhost:8080/api` | Backend API URL |
+| `REVIEWMIND_GITHUB_CLIENT_ID` | *(bundled)* | Override the GitHub OAuth App client ID |
 
-Auth token is stored in `~/.reviewmind/config.json` via `reviewmind login` or `reviewmind config add-authtoken`. The token is sent as the `x-cli-token` header in all API requests.
+Authentication is handled via GitHub OAuth Device Flow during `reviewmind login`.
+The GitHub token is stored in `~/.reviewmind/config.json` and sent as the `x-cli-token` header in all API requests.
 
 ---
 
