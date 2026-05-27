@@ -1,11 +1,14 @@
+import json
 import os
 import re
 import subprocess
 import sys
 from pathlib import Path
 
+import pathspec
 import requests
 import typer
+import yaml
 
 from reviewmind.cli.cache import (
     flush_violations,
@@ -16,6 +19,7 @@ from reviewmind.cli.cache import (
 from reviewmind.cli.config import get_selected_repo, get_token
 from reviewmind.cli.setup import get_git_repo_name
 from reviewmind.engine import AnalysisEngine, EngineRule
+from reviewmind.engine.validation import validate_rule
 
 API_BASE_URL = os.getenv("REVIEWMIND_API_URL", "http://localhost:8080/api")
 
@@ -116,12 +120,8 @@ def run_check(
         try:
             with open(rules_path, "r", encoding="utf-8") as rf:
                 if rules_path.suffix in (".yml", ".yaml"):
-                    import yaml
-
                     content = yaml.safe_load(rf)
                 elif rules_path.suffix == ".json":
-                    import json
-
                     content = json.load(rf)
                 else:
                     typer.secho(
@@ -141,8 +141,6 @@ def run_check(
                         fg=typer.colors.RED,
                     )
                     raise typer.Exit(1)
-
-                from reviewmind.engine.validation import validate_rule
 
                 validation_errors = []
                 for idx, r_dict in enumerate(rules_data):
@@ -267,13 +265,9 @@ def run_check(
     except Exception:
         commit_hash = "unknown"
 
-    import pathspec
-
     ignore_spec = None
     if Path(".reviewmind.yml").exists():
         try:
-            import yaml
-
             with open(".reviewmind.yml", "r", encoding="utf-8") as yf:
                 config_yml = yaml.safe_load(yf) or {}
                 ignore_patterns = config_yml.get("ignore", [])
