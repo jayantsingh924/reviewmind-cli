@@ -20,6 +20,8 @@ Usage in CLI:
 
 from dataclasses import dataclass
 
+from reviewmind.engine.validation import normalize_severity
+
 
 @dataclass
 class EngineRule:
@@ -35,6 +37,9 @@ class EngineRule:
     supports_ast: bool = False
     requires_language: str | None = None
     confidence: float = 0.9
+
+    def __post_init__(self):
+        self.severity = normalize_severity(self.severity)
 
     @classmethod
     def from_orm(cls, rule) -> "EngineRule":

@@ -45,7 +45,8 @@ def run_setup():
     token = get_token()
     if not token:
         typer.secho(
-            "Error: Not authenticated. Please run 'reviewmind config add-authtoken <token>' first.",
+            "Error: Not authenticated. Please run 'reviewmind login' "
+            "or 'reviewmind config add-authtoken <token>' first.",
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
