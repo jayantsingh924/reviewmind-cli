@@ -89,6 +89,14 @@ def test_run_check_rules_file_not_found():
     assert exc_info.value.exit_code == 1
 
 
+def test_run_check_skipped_via_env():
+    import os
+    with patch.dict(os.environ, {"REVIEWMIND_SKIP": "true"}):
+        with pytest.raises(typer.Exit) as exc_info:
+            run_check(fix=False)
+        assert exc_info.value.exit_code == 0
+
+
 @patch("reviewmind.cli.auth.webbrowser.open")
 @patch("reviewmind.cli.auth.save_config")
 @patch("reviewmind.cli.auth.load_config", return_value={})
@@ -201,6 +209,24 @@ def test_doctor_failure(mock_cache, mock_get_token, mock_git_repo, mock_get):
     with pytest.raises(typer.Exit) as exc_info:
         run_doctor()
     assert exc_info.value.exit_code == 1
+
+
+@patch("reviewmind.cli.doctor.check_git_repo")
+@patch("reviewmind.cli.doctor.get_token", return_value="rm_live_12345")
+@patch("reviewmind.cli.doctor.check_cache_dir", return_value=True)
+@patch("reviewmind.cli.doctor.check_auth", return_value=True)
+@patch("reviewmind.cli.doctor.check_backend_connection", return_value=True)
+@patch("reviewmind.cli.setup.run_setup")
+def test_doctor_repair_precommit_hook(mock_run_setup, mock_backend, mock_auth, mock_cache, mock_token, mock_git_repo, tmp_path):
+    from reviewmind.cli.doctor import run_doctor
+    
+    mock_git_repo.return_value = (True, tmp_path)
+    
+    with pytest.raises(typer.Exit) as exc_info:
+        run_doctor(repair=True)
+    
+    mock_run_setup.assert_called_once()
+    assert exc_info.value.exit_code == 0
 
 
 # --- Rule Validation tests ---

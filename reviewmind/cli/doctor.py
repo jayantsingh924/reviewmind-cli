@@ -56,33 +56,56 @@ def check_git_repo() -> tuple[bool, Path | None]:
     return False, None
 
 
-def check_precommit_hook(git_dir: Path | None) -> bool:
+def check_precommit_hook(git_dir: Path | None, repair: bool = False) -> bool:
     if not git_dir:
         typer.secho("  - Skip pre-commit check (not a Git repo)", fg=typer.colors.YELLOW)
         return False
 
     hook_path = git_dir / "hooks" / "pre-commit"
-    if not hook_path.exists():
-        typer.secho(
-            "  ✗ pre-commit hook is not installed. Run 'reviewmind setup'", fg=typer.colors.RED
-        )
-        return False
+    is_missing = not hook_path.exists()
+    is_incorrect = False
 
-    try:
-        content = hook_path.read_text(encoding="utf-8")
-        if "reviewmind check" in content:
-            typer.secho("  ✓ pre-commit hook is installed and configured", fg=typer.colors.GREEN)
-            return True
-        else:
-            typer.secho(
-                "  ✗ pre-commit hook exists but does not call 'reviewmind check'. "
-                "Run 'reviewmind setup'",
-                fg=typer.colors.RED,
-            )
+    if not is_missing:
+        try:
+            content = hook_path.read_text(encoding="utf-8")
+            if "reviewmind check" not in content:
+                is_incorrect = True
+        except Exception as e:
+            typer.secho(f"  ✗ Error reading pre-commit hook: {e}", fg=typer.colors.RED)
+            if repair:
+                typer.secho("  Attempting to repair hook...", fg=typer.colors.BLUE)
+                try:
+                    from reviewmind.cli.setup import run_setup
+                    run_setup()
+                    typer.secho("  ✓ pre-commit hook successfully repaired!", fg=typer.colors.GREEN)
+                    return True
+                except Exception as ex:
+                    typer.secho(f"  ✗ Failed to repair pre-commit hook: {ex}", fg=typer.colors.RED)
             return False
-    except Exception as e:
-        typer.secho(f"  ✗ Error reading pre-commit hook: {e}", fg=typer.colors.RED)
-        return False
+
+    if is_missing or is_incorrect:
+        if is_missing:
+            msg = "  ✗ pre-commit hook is not installed. Run 'reviewmind setup'"
+        else:
+            msg = "  ✗ pre-commit hook exists but does not call 'reviewmind check'. Run 'reviewmind setup'"
+
+        if repair:
+            typer.secho(msg, fg=typer.colors.YELLOW)
+            typer.secho("  Attempting to repair hook...", fg=typer.colors.BLUE)
+            try:
+                from reviewmind.cli.setup import run_setup
+                run_setup()
+                typer.secho("  ✓ pre-commit hook successfully repaired!", fg=typer.colors.GREEN)
+                return True
+            except Exception as ex:
+                typer.secho(f"  ✗ Failed to repair pre-commit hook: {ex}", fg=typer.colors.RED)
+                return False
+        else:
+            typer.secho(msg, fg=typer.colors.RED)
+            return False
+
+    typer.secho("  ✓ pre-commit hook is installed and configured", fg=typer.colors.GREEN)
+    return True
 
 
 def check_auth() -> bool:
@@ -139,7 +162,7 @@ def check_backend_connection() -> bool:
     return False
 
 
-def run_doctor():
+def run_doctor(repair: bool = False):
     """Run diagnostics to verify CLI health and environment configuration."""
     typer.secho("ReviewMind Doctor - Diagnostic Tool\n", bold=True)
 
@@ -155,7 +178,7 @@ def run_doctor():
     is_git, git_dir = check_git_repo()
     if not is_git:
         issues += 1
-    elif not check_precommit_hook(git_dir):
+    elif not check_precommit_hook(git_dir, repair=repair):
         issues += 1
 
     typer.secho("\nAuthentication & Network Check:")
@@ -173,9 +196,16 @@ def run_doctor():
         )
         raise typer.Exit(0)
     else:
-        typer.secho(
-            f"✗ Doctor found {issues} configuration issue(s). Please fix the errors listed above.",
-            fg=typer.colors.RED,
-            bold=True,
-        )
+        if repair:
+            typer.secho(
+                f"✗ Doctor completed repairs, but {issues} issue(s) still remain or cannot be auto-fixed.",
+                fg=typer.colors.RED,
+                bold=True,
+            )
+        else:
+            typer.secho(
+                f"✗ Doctor found {issues} configuration issue(s). Please fix the errors listed above or try running with --repair.",
+                fg=typer.colors.RED,
+                bold=True,
+            )
         raise typer.Exit(1)

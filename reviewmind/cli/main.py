@@ -14,9 +14,13 @@ def login_command():
 
 
 @app.command(name="doctor")
-def doctor_command():
+def doctor_command(
+    repair: bool = typer.Option(
+        False, "--repair", help="Automatically attempt to repair detected issues"
+    ),
+):
     """Run diagnostics to verify CLI health and environment configuration."""
-    doctor.run_doctor()
+    doctor.run_doctor(repair=repair)
 
 
 @app.command(name="setup")

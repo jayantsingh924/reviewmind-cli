@@ -103,6 +103,13 @@ def run_check(
     format_type: str = "console",
     output_file: str | None = None,
 ):
+    if os.getenv("REVIEWMIND_SKIP") in ("1", "true", "TRUE"):
+        typer.secho(
+            "ReviewMind check skipped via REVIEWMIND_SKIP environment variable.",
+            fg=typer.colors.YELLOW,
+        )
+        raise typer.Exit(0)
+
     token = None
     repo_name = None
     project_id = None

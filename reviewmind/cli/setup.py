@@ -11,6 +11,11 @@ HOOK_SCRIPT = """#!/usr/bin/env bash
 # ReviewMind Pre-Commit Hook
 # Dynamically runs the reviewmind check command
 
+if [ "$REVIEWMIND_SKIP" = "1" ] || [ "$REVIEWMIND_SKIP" = "true" ]; then
+    echo "ReviewMind check skipped via REVIEWMIND_SKIP environment variable."
+    exit 0
+fi
+
 reviewmind check
 if [ $? -ne 0 ]; then
     echo "ReviewMind checks failed. Commit aborted."
