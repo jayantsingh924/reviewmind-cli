@@ -76,6 +76,7 @@ def check_precommit_hook(git_dir: Path | None, repair: bool = False) -> bool:
                 typer.secho("  Attempting to repair hook...", fg=typer.colors.BLUE)
                 try:
                     from reviewmind.cli.setup import run_setup
+
                     run_setup()
                     typer.secho("  ✓ pre-commit hook successfully repaired!", fg=typer.colors.GREEN)
                     return True
@@ -97,6 +98,7 @@ def check_precommit_hook(git_dir: Path | None, repair: bool = False) -> bool:
             typer.secho("  Attempting to repair hook...", fg=typer.colors.BLUE)
             try:
                 from reviewmind.cli.setup import run_setup
+
                 run_setup()
                 typer.secho("  ✓ pre-commit hook successfully repaired!", fg=typer.colors.GREEN)
                 return True

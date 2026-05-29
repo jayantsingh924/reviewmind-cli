@@ -91,6 +91,7 @@ def test_run_check_rules_file_not_found():
 
 def test_run_check_skipped_via_env():
     import os
+
     with patch.dict(os.environ, {"REVIEWMIND_SKIP": "true"}):
         with pytest.raises(typer.Exit) as exc_info:
             run_check(fix=False)
@@ -231,12 +232,12 @@ def test_doctor_repair_precommit_hook(
     tmp_path,
 ):
     from reviewmind.cli.doctor import run_doctor
-    
+
     mock_git_repo.return_value = (True, tmp_path)
-    
+
     with pytest.raises(typer.Exit) as exc_info:
         run_doctor(repair=True)
-    
+
     mock_run_setup.assert_called_once()
     assert exc_info.value.exit_code == 0
 
