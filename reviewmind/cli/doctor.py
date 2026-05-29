@@ -87,7 +87,10 @@ def check_precommit_hook(git_dir: Path | None, repair: bool = False) -> bool:
         if is_missing:
             msg = "  ✗ pre-commit hook is not installed. Run 'reviewmind setup'"
         else:
-            msg = "  ✗ pre-commit hook exists but does not call 'reviewmind check'. Run 'reviewmind setup'"
+            msg = (
+                "  ✗ pre-commit hook exists but does not call 'reviewmind check'. "
+                "Run 'reviewmind setup'"
+            )
 
         if repair:
             typer.secho(msg, fg=typer.colors.YELLOW)
@@ -198,13 +201,15 @@ def run_doctor(repair: bool = False):
     else:
         if repair:
             typer.secho(
-                f"✗ Doctor completed repairs, but {issues} issue(s) still remain or cannot be auto-fixed.",
+                f"✗ Doctor completed repairs, but {issues} issue(s) still "
+                "remain or cannot be auto-fixed.",
                 fg=typer.colors.RED,
                 bold=True,
             )
         else:
             typer.secho(
-                f"✗ Doctor found {issues} configuration issue(s). Please fix the errors listed above or try running with --repair.",
+                f"✗ Doctor found {issues} configuration issue(s). Please fix "
+                "the errors listed above or try running with --repair.",
                 fg=typer.colors.RED,
                 bold=True,
             )

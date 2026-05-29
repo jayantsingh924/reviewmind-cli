@@ -103,8 +103,11 @@ def test_run_check_skipped_via_env():
 @patch("reviewmind.cli.auth.typer.prompt", return_value="1")
 @patch("reviewmind.cli.auth.requests.get")
 @patch("reviewmind.cli.auth.requests.post")
-def test_login_success(mock_post, mock_get, mock_prompt, mock_load_config, mock_save_config, mock_open):
+def test_login_success(
+    mock_post, mock_get, mock_prompt, mock_load_config, mock_save_config, mock_open
+):
     from unittest.mock import MagicMock
+
     from reviewmind.cli.auth import run_login
 
     # First post: device code request
@@ -140,6 +143,7 @@ def test_login_success(mock_post, mock_get, mock_prompt, mock_load_config, mock_
 @patch("reviewmind.cli.auth.requests.post")
 def test_login_access_denied(mock_post):
     from unittest.mock import MagicMock
+
     from reviewmind.cli.auth import run_login
 
     device_resp = MagicMock()
@@ -161,8 +165,8 @@ def test_login_access_denied(mock_post):
 
 
 def test_login_no_client_id():
-    from reviewmind.cli.auth import _require_client_id
     import reviewmind.cli.auth as auth_module
+    from reviewmind.cli.auth import _require_client_id
 
     original = auth_module.GITHUB_CLIENT_ID
     auth_module.GITHUB_CLIENT_ID = ""
@@ -217,7 +221,15 @@ def test_doctor_failure(mock_cache, mock_get_token, mock_git_repo, mock_get):
 @patch("reviewmind.cli.doctor.check_auth", return_value=True)
 @patch("reviewmind.cli.doctor.check_backend_connection", return_value=True)
 @patch("reviewmind.cli.setup.run_setup")
-def test_doctor_repair_precommit_hook(mock_run_setup, mock_backend, mock_auth, mock_cache, mock_token, mock_git_repo, tmp_path):
+def test_doctor_repair_precommit_hook(
+    mock_run_setup,
+    mock_backend,
+    mock_auth,
+    mock_cache,
+    mock_token,
+    mock_git_repo,
+    tmp_path,
+):
     from reviewmind.cli.doctor import run_doctor
     
     mock_git_repo.return_value = (True, tmp_path)
